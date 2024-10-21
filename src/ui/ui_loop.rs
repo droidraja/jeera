@@ -61,7 +61,7 @@ impl UILoop {
                 // Catch and handle crossterm events
                maybe_event = crossterm_events.next() => match maybe_event {
                     Some(Ok(Event::Key(key))) if key.kind == KeyEventKind::Press  => {
-                        tab_page.handle_key_event(key, None);
+                        tab_page.handle_key_event(key)?;
                     }, 
                     None => break Ok(Interrupted::UserInt),
                     _ => (),

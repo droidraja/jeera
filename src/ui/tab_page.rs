@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use super::{
     components::{Component, ComponentRender},
-    pages::current_sprint::CurrentSprintPage,
+    pages::current_sprint::CurrentSprintPage, ui_action::UIAction,
 };
 
 const TABS: [&str; 2] = ["Current Sprint", "Assigned Tasks"];
@@ -89,9 +89,7 @@ impl Component for TabPage {
     }
 
     
-    fn handle_key_event<F>(&mut self, key: KeyEvent, _: Option<F>) -> Result<()>
-    where 
-        F: FnOnce(usize)
+    fn handle_key_event(&mut self, key: KeyEvent) -> Result<Option<UIAction>>
         {
         match key.code {
             KeyCode::Char('q') => {
@@ -105,9 +103,10 @@ impl Component for TabPage {
             }
             _ => {
                 // todo!("pass other keycodes to the child pages to handle ")
+                self.current_sprint.handle_key_event(key)?;
             }
         };
-        Ok(())
+        Ok(None)
     }
 }
 

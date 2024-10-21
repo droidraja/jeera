@@ -1,4 +1,3 @@
-use std::io;
 use logging::initialize_logging;
 use state::state_store::StateStore;
 use termination::create_termination;

@@ -1,9 +1,11 @@
+
 use crate::api::models::JiraTask;
 use crate::state::action::Action;
 use crate::state::State;
 
 use crate::ui::components::{issue_list, ComponentRender};
 use crate::ui::components::{issue_list::IssueList, Component};
+use crate::ui::ui_action::UIAction;
 use anyhow::Ok;
 use tokio::sync::mpsc::UnboundedSender;
 
@@ -49,22 +51,25 @@ impl Component for CurrentSprintPage {
     ) -> Self
     where
         Self: Sized {
-        Self {
+        let this = Self {
             issue_list_comp: IssueList::new(state, action_tx.clone()),
             props: state.into(),
             action_tx,
-            selected_issue: None
-        }
+            selected_issue: None,
+        };
+        let _ = this.action_tx.send(Action::GetCurrentTasks);
+        this
     }
     
-    fn handle_key_event(&mut self, key: crossterm::event::KeyEvent, _on_enter: Option<Box<dyn FnMut(usize)>>) -> anyhow::Result<()>
+    fn handle_key_event(&mut self, key: crossterm::event::KeyEvent) -> anyhow::Result<Option<UIAction>>
     {
-        let callback = move |selected_index| {
-            self.selected_issue = Some(selected_index);
-        };
         
-        self.issue_list_comp.handle_key_event(key, Some(Box::new(callback)));
-        Ok(())
+        if let Some(UIAction::ListItemClick(clicked_id)) = self.issue_list_comp.handle_key_event(key).unwrap() {
+            tracing::info!("Received {} from child", clicked_id); 
+            self.selected_issue = Some(clicked_id);
+        }
+
+        Ok(None)
     }
     
 }

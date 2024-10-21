@@ -6,6 +6,7 @@ use ratatui::{
 use tokio::sync::mpsc::UnboundedSender;
 use crate::state::{State, action::Action};
 use anyhow::Result;
+use crate::ui::ui_action::UIAction;
 
 pub trait Component {
     fn new(state: &State, 
@@ -19,7 +20,7 @@ pub trait Component {
 
     fn name(&self) -> &str;
 
-    fn handle_key_event(&mut self, key: KeyEvent, on_enter: Option<Box<dyn FnMut(usize)>>) -> Result<()>;
+    fn handle_key_event(&mut self, key: KeyEvent) -> Result<Option<UIAction>>;
 
 }
 

@@ -1,16 +1,19 @@
-use std::any::Any;
+use std::sync::Arc;
 
 use crossterm::event::{KeyEvent, KeyCode};
-use ratatui::widgets::{List, ListState, StatefulWidget, Widget};
+use ratatui::widgets::{List, ListState, StatefulWidget};
+use std::sync::Mutex;
 
 use crate::api::models::JiraTask;
 
 use super::{Component, ComponentRender};
 
+use crate::ui::ui_action::UIAction;
+
 #[derive(Default, Debug)]
 pub struct IssueList {
     pub selected_index: usize,
-    list_state: ListState,
+    list_state: Arc<Mutex<ListState>>,
 }
 
 impl Component for IssueList {
@@ -21,7 +24,7 @@ impl Component for IssueList {
     where
         Self: Sized,
     {
-        IssueList { selected_index: 0, list_state:ListState::default()}
+        IssueList { selected_index: 0, list_state:Arc::new(Mutex::new(ListState::default()))}
     }
 
     fn move_with_state(self, _: &crate::state::State) -> Self
@@ -35,25 +38,24 @@ impl Component for IssueList {
         "Issue List"
     }
 
-    fn handle_key_event(&mut self, key: KeyEvent, on_enter: Option<Box<dyn FnMut(usize)>>) -> anyhow::Result<()>  {
-        
+    fn handle_key_event(&mut self, key: KeyEvent) -> anyhow::Result<Option<UIAction>>  {
         match key.code {
             KeyCode::Up => {
                 if self.selected_index > 0 {
                     self.selected_index -= 1;
                 }
+                self.list_state.lock().unwrap().select_next();
             }
             KeyCode::Down => {
                 self.selected_index += 1; // For simplicity, we're not checking the upper bound
+                self.list_state.lock().unwrap().select_previous();
             }
             KeyCode::Enter => {
-                if let Some(mut callback) = on_enter {
-                    callback(self.selected_index);
-                }
+                return Ok(Some(UIAction::ListItemClick(self.selected_index))) 
             }
             _ => {}
         }
-        Ok(())
+        Ok(None)
     }
 }
 
@@ -69,8 +71,9 @@ impl ComponentRender<RenderProps<'_>> for IssueList {
         props: RenderProps,
     ) {
         let titles: Vec<String> = props.issue_list.iter().map(|x| x.to_string()).collect();
+        
+        let mut list_state = self.list_state.lock().unwrap();
 
-        let mut list_state = self.list_state.clone();
 
         let list = List::new(titles)
             .highlight_symbol("> ");

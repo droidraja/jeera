@@ -1,12 +1,9 @@
 pub mod models;
 
-use reqwest::{
-    header::{HeaderMap, HeaderValue, AUTHORIZATION}, Response, Url
-};
+use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION};
 use tokio::sync::mpsc::UnboundedSender;
-use std::{collections::HashMap, fs::read};
 
-use anyhow::{ Result};
+use anyhow::Result;
 use models::JiraTask;
 use reqwest::{self, Client};
 use serde_json::Value;
@@ -68,6 +65,7 @@ impl JiraApi {
                 response
             },
             Err(e) => {
+                tracing::error!("Jira Api Failed {:#}",e);
                 let _ = action_tx.send(Action::GetCurrentTasksFailed);
                 return;
             }
