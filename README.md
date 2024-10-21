@@ -2,6 +2,30 @@
 
 A terminal-based user interface (TUI) for interacting with Jira, built in Rust for fun and learning.
 
+
+## Configuration
+
+Jeera CLI requires a configuration file to run. Here's how to set it up:
+
+1. Create a directory named `.jeera` in your home directory:
+   - On Linux/macOS: `mkdir ~/.jeera`
+   - On Windows: `mkdir %USERPROFILE%\.jeera`
+
+2. Create a configuration file named `config.json` in the `.jeera` directory:
+   `~/.jeera/config.json`
+
+   This location is consistent across operating systems (Linux, macOS, and Windows).
+
+3. The `config.json` file must have the following structure:
+
+   ```json
+   {
+     "email": "your-email@example.com",
+     "api_token": "your-jira-api-token",
+     "host": "your-jira-host.atlassian.net"
+   }
+   ```
+
 ## Features
 
 - View current sprint tasks

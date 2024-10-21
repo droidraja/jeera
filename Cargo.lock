@@ -591,6 +591,7 @@ dependencies = [
  "lazy_static",
  "ratatui",
  "reqwest",
+ "serde",
  "serde_json",
  "tokio",
  "tokio-stream",

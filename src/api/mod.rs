@@ -2,6 +2,9 @@ pub mod models;
 
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION};
 use tokio::sync::mpsc::UnboundedSender;
+use directories::{BaseDirs, ProjectDirs};
+use std::fs;
+use serde::{Serialize, Deserialize};
 
 use anyhow::Result;
 use models::JiraTask;
@@ -14,28 +17,53 @@ const API_TOKEN: &str = "";
 const HOST: &str = "soupcop.atlassian.net";
 const EMAIL: &str = "srajasudhan@gmail.com";
 
-#[derive(Clone)]
-pub struct JiraApi {
+#[derive(Serialize,Deserialize,Clone)]
+struct JiraConfig {
     email: String,
     api_token: String,
     host: String,
+}
+
+#[derive(Clone)]
+pub struct JiraApi {
+    config: JiraConfig,
     client: reqwest::Client,
 }
 
 impl JiraApi {
-    pub fn new() -> Self {
-        let _client = Client::new();
-        Self {
+    pub fn new() -> Result<Self> {
+        let config = Self::load_config()?;
+        let client = Client::new();
+        
+        Ok(Self {
+            config,
+            client,
+        })
+    }
+
+    fn load_config() -> Result<JiraConfig> {
+        if let Some(base_dirs) = BaseDirs::new() {
+            let config_dir = base_dirs.home_dir();
+            let config_path = config_dir.join(".jeera").join("config.json");
+
+            if config_path.exists() {
+                let config_str = fs::read_to_string(config_path)?;
+                let config: JiraConfig = serde_json::from_str(&config_str)?;
+                return Ok(config);
+            }
+        }
+
+        // Fallback to default values if config file is not found
+        Ok(JiraConfig {
             email: EMAIL.into(),
             api_token: API_TOKEN.into(),
             host: HOST.into(),
-            client: _client,
-        }
+        })
     }
 
     pub fn get_headers(&self) -> Result<HeaderMap> {
         let mut headers = HeaderMap::new();
-        let auth = base64::encode(format!("{}:{}", self.email, self.api_token));
+        let auth = base64::encode(format!("{}:{}", self.config.email, self.config.api_token));
         headers.insert(
             AUTHORIZATION,
             HeaderValue::from_str(&format!("Basic {}", auth))?,
@@ -44,7 +72,7 @@ impl JiraApi {
     }
 
     pub fn get_url(&self, query: &str) -> String {
-        format!("https://{}/rest/api/2/{}", self.host, query)
+        format!("https://{}/rest/api/2/{}", self.config.host, query)
     }
 
     pub async fn get_current_tasks(self, action_tx: UnboundedSender<Action>)  {

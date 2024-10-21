@@ -103,7 +103,6 @@ impl ComponentRender<()> for CurrentSprintPage {
         if let Some(selected_index) = self.selected_issue {
             // tracing::info!("{}",selected_index);
             if let Some(selected_task) = self.props.issue_list.get(selected_index-1) {
-                tracing::info!("came here as well");
                 self.issue_detail_comp.render(chunks[1], buf, issue_detail::RenderProps {
                     task: selected_task.clone(),
                 });

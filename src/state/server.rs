@@ -15,7 +15,7 @@ pub struct MiddleWare {
 impl MiddleWare {
     pub fn new() -> (Self, UnboundedReceiver<Action>){
         let rxtx =  mpsc::unbounded_channel::<Action>();
-        let jira_api = JiraApi::new();
+        let jira_api = JiraApi::new().unwrap();
         (Self{jira_api,downstream_tx:rxtx.0},rxtx.1)
     }
 
