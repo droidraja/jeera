@@ -1,4 +1,6 @@
 
+use std::time::Duration;
+
 use super::server::MiddleWare;
 
 use tokio::sync::{
@@ -34,24 +36,40 @@ impl StateStore {
         let (middleware,mut middleware_rx) = MiddleWare::new();
         
         tokio::spawn(middleware.main_loop(action_rx));
+        let mut ticker = tokio::time::interval(Duration::from_secs(1));
+
         // the initial state once
         self.state_tx.send(state.clone())?;
 
         let result = loop {
             tokio::select! {
                 Some(action) = middleware_rx.recv() => match action {
+
                     Action::Exit => {
                         let _ = terminator.terminate(Interrupted::UserInt);
     
                         break Interrupted::UserInt;
                     },
+                    Action::GetCurrentTasksStarted => {
+                        state.add_bg_task(String::from("sprint tasks"));
+                    },
+                    Action::GetCurrentTasksFailed => {
+                        state.fail_bg_task(String::from("sprint tasks"));
+                    },
                     Action::GetCurrentTasksFinished(issues) => {
                         state.set_current_sprint_tasks(issues);
+                        state.succeed_bg_task(String::from("sprint tasks"));
                     },
+
                     //capture other actions to silence errors during dev 
                     unhandled_action => {
                         tracing::info!("Unhandled Action {:?}", unhandled_action);
                     }
+                },
+
+                // Tick to terminate the select every N milliseconds
+                _ = ticker.tick() => {
+                    state.tick_timer();
                 },
                 // Catch and handle interrupt signal to gracefully shutdown
                 Ok(interrupted) = interrupt_rx.recv() => {

@@ -25,7 +25,7 @@ use crate::{
 
 use super::tab_page::TabPage;
 
-const RENDERING_TICK_RATE: Duration = Duration::from_millis(250);
+const RENDERING_TICK_RATE: Duration = Duration::from_millis(1000);
 
 pub struct UILoop {
     action_tx: mpsc::UnboundedSender<Action>,

@@ -2,16 +2,16 @@ use std::fmt::Display;
 
 #[derive(Debug, Clone)]
 pub struct JiraTask {
-    issue_type: String,
-    summary: String,
-    key: String,
-    parent: Option<String>,
-    sprint: Option<Vec<String>>,
-    priority: String,
-    asssignee: Option<String>,
-    reported: Option<String>,
-    status: String,
-    team: Option<String>,
+    pub issue_type: String,
+    pub summary: String,
+    pub key: String,
+    pub parent: Option<String>,
+    pub sprint: Option<Vec<String>>,
+    pub priority: String,
+    pub asssignee: Option<String>,
+    pub reported: Option<String>,
+    pub status: String,
+    pub team: Option<String>,
 }
 
 impl Display for JiraTask {
