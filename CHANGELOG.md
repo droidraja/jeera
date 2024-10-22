@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1](https://github.com/droidraja/jeera/compare/v0.1.0...v0.1.1)
+
+### ⚙️ Miscellaneous Tasks
+
+- *(gha)* Add GH token to checkout step of release job - ([3e78086](https://github.com/droidraja/jeera/commit/3e780863188e703346208f5c4f6e982a15f19349))
+
+
 ## [0.1.0]
 
 ### ⛰️ Features
