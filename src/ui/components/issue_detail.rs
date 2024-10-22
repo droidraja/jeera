@@ -1,4 +1,3 @@
-use std::borrow::Cow;
 
 use anyhow::Ok;
 
@@ -20,15 +19,15 @@ pub struct IssueDetail {
 
 
 impl Component for IssueDetail {
-    fn new(state: &crate::state::State, 
-        action_tx: tokio::sync::mpsc::UnboundedSender<crate::state::action::Action>
+    fn new(_state: &crate::state::State, 
+        _action_tx: tokio::sync::mpsc::UnboundedSender<crate::state::action::Action>
     ) -> Self
     where
         Self: Sized {
         IssueDetail{}
     }
 
-    fn move_with_state(self, state: &crate::state::State) -> Self
+    fn move_with_state(self, _state: &crate::state::State) -> Self
     where
         Self: Sized {
         self
@@ -38,7 +37,7 @@ impl Component for IssueDetail {
         todo!()
     }
 
-    fn handle_key_event(&mut self, key: crossterm::event::KeyEvent) -> anyhow::Result<Option<crate::ui::ui_action::UIAction>> {
+    fn handle_key_event(&mut self, _key: crossterm::event::KeyEvent) -> anyhow::Result<Option<crate::ui::ui_action::UIAction>> {
         Ok(None)
     }
 }

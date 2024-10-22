@@ -2,7 +2,7 @@ pub mod models;
 
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION};
 use tokio::sync::mpsc::UnboundedSender;
-use directories::{BaseDirs, ProjectDirs};
+use directories::BaseDirs;
 use std::fs;
 use serde::{Serialize, Deserialize};
 

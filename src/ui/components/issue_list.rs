@@ -12,7 +12,6 @@ use crate::ui::ui_action::UIAction;
 
 #[derive(Default, Debug)]
 pub struct IssueList {
-    pub selected_index: usize,
     list_state: Arc<Mutex<ListState>>,
 }
 
@@ -24,7 +23,7 @@ impl Component for IssueList {
     where
         Self: Sized,
     {
-        IssueList { selected_index: 0, list_state:Arc::new(Mutex::new(ListState::default()))}
+        IssueList {list_state:Arc::new(Mutex::new(ListState::default()))}
     }
 
     fn move_with_state(self, _: &crate::state::State) -> Self
@@ -41,17 +40,15 @@ impl Component for IssueList {
     fn handle_key_event(&mut self, key: KeyEvent) -> anyhow::Result<Option<UIAction>>  {
         match key.code {
             KeyCode::Up => {
-                if self.selected_index > 0 {
-                    self.selected_index -= 1;
-                }
-                self.list_state.lock().unwrap().select_next();
-            }
-            KeyCode::Down => {
-                self.selected_index += 1; // For simplicity, we're not checking the upper bound
                 self.list_state.lock().unwrap().select_previous();
             }
+            KeyCode::Down => {
+                self.list_state.lock().unwrap().select_next();
+            }
             KeyCode::Enter => {
-                return Ok(Some(UIAction::ListItemClick(self.selected_index))) 
+                if let Some(index) = self.list_state.lock().unwrap().selected() {
+                    return Ok(Some(UIAction::ListItemClick(index)))
+                }                 
             }
             _ => {}
         }
