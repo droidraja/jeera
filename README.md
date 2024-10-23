@@ -76,7 +76,8 @@ This application follows a hybrid architecture, combining elements of component-
 5. UI re-renders based on the new state
 
 ## TODO
-- Implement release and build process
-- Implement create/edit functionalities for Jira tasks
-- Improve error handling and user feedback
-- Add user authentication and configuration
+
+- [x] Implement release and build process
+- [ ] Implement create/edit functionalities for Jira tasks
+- [ ]Improve error handling and user feedback
+- [ ] Add user authentication and configuration
