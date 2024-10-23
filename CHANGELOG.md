@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.2](https://github.com/droidraja/jeera/compare/v0.1.1...v0.1.2)
+
+### 🐛 Bug Fixes
+
+- Fix selection of issue - ([1a51ebd](https://github.com/droidraja/jeera/commit/1a51ebd5f1774e6ab23be9fcb07eda09015771be))
+
+
 ## [0.1.1](https://github.com/droidraja/jeera/compare/v0.1.0...v0.1.1)
 
 ### ⚙️ Miscellaneous Tasks
