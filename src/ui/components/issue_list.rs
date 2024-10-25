@@ -67,15 +67,23 @@ impl ComponentRender<RenderProps<'_>> for IssueList {
         buf: &mut ratatui::prelude::Buffer,
         props: RenderProps,
     ) {
-        let titles: Vec<String> = props.issue_list.iter().map(|x| x.to_string()).collect();
+        let available_width = (area.width as usize).saturating_sub(1);
+        let titles: Vec<String> = props.issue_list.iter()
+            .map(|x| {
+                let full_title = x.to_string();
+                if full_title.len() > available_width {
+                    format!("{}...", &full_title[..available_width.saturating_sub(4)])
+                } else {
+                    full_title
+                }
+            })
+            .collect();
         
         let mut list_state = self.list_state.lock().unwrap();
-
 
         let list = List::new(titles)
             .highlight_symbol("> ");
 
         StatefulWidget::render(list, area, buf, &mut list_state);
-
     }
 }

@@ -76,9 +76,10 @@ impl Component for CurrentSprintPage {
             return Ok(None);
         }
 
+
         if self.selected_issue.is_some() {
             if let Some(action) = self.issue_detail_comp.handle_key_event(key)? {
-                tracing::info!("Unhandled UI Action created from issue detail {:?}",action)
+                tracing::info!("Unhandled UI Action received from issue detail {:?}",action)
             }
         }
 
@@ -97,9 +98,8 @@ impl ComponentRender<()> for CurrentSprintPage {
                 Constraint::Percentage(50),
             ])
             .split(area);
-
-        self.issue_list_comp.render(chunks[0], buf, issue_list::RenderProps{issue_list: &self.props.issue_list});
-
+        
+        let mut issue_list_area= &area;
         if let Some(selected_index) = self.selected_issue {
             // tracing::info!("{}",selected_index);
             if let Some(selected_task) = self.props.issue_list.get(selected_index) {
@@ -107,6 +107,10 @@ impl ComponentRender<()> for CurrentSprintPage {
                     task: selected_task.clone(),
                 });
             }
-        }
+            issue_list_area = &chunks[0];
+        } 
+
+        self.issue_list_comp.render(issue_list_area.to_owned(), buf, issue_list::RenderProps{issue_list: &self.props.issue_list});
+        
     }
 }

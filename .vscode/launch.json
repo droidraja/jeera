@@ -7,15 +7,15 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug executable 'learn-rata'",
+            "name": "Debug executable 'jeera'",
             "cargo": {
                 "args": [
                     "build",
-                    "--bin=learn-rata",
-                    "--package=learn-rata"
+                    "--bin=jeera",
+                    "--package=jeera"
                 ],
                 "filter": {
-                    "name": "learn-rata",
+                    "name": "jeera",
                     "kind": "bin"
                 }
             },
@@ -30,11 +30,11 @@
                 "args": [
                     "test",
                     "--no-run",
-                    "--bin=learn-rata",
-                    "--package=learn-rata"
+                    "--bin=jeera",
+                    "--package=jeera"
                 ],
                 "filter": {
-                    "name": "learn-rata",
+                    "name": "jeera",
                     "kind": "bin"
                 }
             },
