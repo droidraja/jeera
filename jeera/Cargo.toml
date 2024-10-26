@@ -1,0 +1,32 @@
+[package]
+name = "jeera"
+version = "0.1.2"
+edition = "2021"
+authors = ["Raja Sudhan <srajasudhan@gmail.com>"]
+license = "Apache-2.0"
+description = "A TUI App for Jira built using Rust"
+readme = "README.md"
+homepage = "https://github.com/droidraja/jeera"
+repository = "https://github.com/droidraja/jeera"
+keywords = ["jiratui","jeera","jira"]
+
+[dependencies]
+anyhow = "1.0.90"
+color-eyre = "0.6.3"
+crossterm = { version = "0.28.1", features = ["event-stream"] }
+directories = "5.0.1"
+lazy_static = "1.5.0"
+ratatui = "0.28.1"
+tokio = { version = "1.32.0", features = ["full", "tracing"] }
+tokio-stream = { version = "0.1.14" }
+tracing = "0.1.40"
+tracing-error = "0.2.0"
+tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
+reqwest = { version = "0.12", features = ["json", "native-tls-vendored"] }
+base64 = "0.13"
+serde_json = {version = "1.0"}
+serde = { version = "1.0", features = ["derive"] }
+textwrap = "0.16"
+jira_cloud = {path = '../jira_cloud_v3_async', package = 'jira_cloud_v3_async'}
+jira_teams = {path = '../jira_teams_v1_async', package = 'jira_teams_v1_async'}
+console-subscriber = "0.4.1"

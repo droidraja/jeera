@@ -1,0 +1,13 @@
+# PublicApiMembershipAddResponseErrorsInner
+
+## Enum Variants
+
+| Name | Description |
+|---- | -----|
+| PublicApiAddMemberError |  |
+| PublicApiMemberNotFoundError |  |
+| PublicApiRemoveMemberError |  |
+
+[[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
+
+
