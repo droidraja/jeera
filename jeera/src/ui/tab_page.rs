@@ -1,8 +1,9 @@
 use std::collections::HashMap;
 
 use super::{
-    components::{Component, ComponentRender},
-    pages::current_sprint::CurrentSprintPage, ui_action::UIAction,
+    components::{background_tasks::BackgroundTasks, Component, ComponentRender},
+    pages::current_sprint::CurrentSprintPage,
+    ui_action::UIAction,
 };
 
 const TABS: [&str; 2] = ["Current Sprint", "Assigned Tasks"];
@@ -26,6 +27,7 @@ pub struct TabPage {
     tabs: Vec<String>,
     _pages: HashMap<String, String>,
     current_tab: usize,
+    background_tasks_diplay: BackgroundTasks,
     action_tx: UnboundedSender<Action>,
     pub current_sprint: CurrentSprintPage,
 }
@@ -58,7 +60,7 @@ impl TabPage {
     }
 }
 
-impl Component<()> for TabPage {
+impl Component for TabPage {
     fn from_state(state: &State, action_tx: UnboundedSender<Action>) -> Self
     where
         Self: Sized,
@@ -69,6 +71,7 @@ impl Component<()> for TabPage {
             tabs: Self::get_default_tabs(),
             _pages: HashMap::new(),
             current_tab: 0,
+            background_tasks_diplay: BackgroundTasks::from_state(state, action_tx.clone()),
             action_tx,
             current_sprint,
         }
@@ -80,13 +83,12 @@ impl Component<()> for TabPage {
     {
         Self {
             current_sprint: self.current_sprint.move_with_state(state),
+            background_tasks_diplay: self.background_tasks_diplay.move_with_state(state),
             ..self
         }
     }
 
-    
-    fn handle_key_event(&mut self, key: KeyEvent) -> Result<Option<UIAction>>
-        {
+    fn handle_key_event(&mut self, key: KeyEvent) -> Result<Option<UIAction>> {
         match key.code {
             KeyCode::Char('q') => {
                 let _ = self.action_tx.send(Action::Exit);
@@ -116,7 +118,11 @@ impl ComponentRender<()> for TabPage {
 
         let layout: std::rc::Rc<[Rect]> = Layout::default()
             .direction(Direction::Vertical)
-            .constraints(vec![Constraint::Length(2), Constraint::Fill(1)])
+            .constraints(vec![
+                Constraint::Length(2),
+                Constraint::Fill(1),
+                Constraint::Length(1),
+            ])
             .split(outer_box[0]);
 
         let title = Title::from("Personal Jira DashBoard".bold());
@@ -139,7 +145,7 @@ impl ComponentRender<()> for TabPage {
             .border_set(border::THICK);
         block.render(area, buf);
 
-        let _tabs = Tabs::new(self.tabs.clone())
+        let _tabs: () = Tabs::new(self.tabs.clone())
             .style(Style::default().white())
             .highlight_style(Style::default().yellow())
             .block(
@@ -153,5 +159,6 @@ impl ComponentRender<()> for TabPage {
             .render(layout[0], buf);
 
         let _ = self.current_sprint.render(layout[1], buf, ());
+        let _ = self.background_tasks_diplay.render(layout[2], buf, ());
     }
 }

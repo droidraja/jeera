@@ -30,6 +30,7 @@ struct JiraConfig {
 }
 
 #[derive(Clone)]
+#[allow(dead_code)]
 pub struct JiraApi {
     config: JiraConfig,
     teams_config: TeamsAPIConfig,
@@ -55,6 +56,7 @@ impl From<&JiraConfig> for TeamsAPIConfig {
     }
 }
 
+#[allow(dead_code)]
 impl JiraApi {
     pub fn new() -> Result<Self> {
         let config = Self::load_config()?;
@@ -133,7 +135,7 @@ impl JiraApi {
 
     pub async fn get_teams(
         &self,
-        action_tx: UnboundedSender<Action>,
+        _action_tx: UnboundedSender<Action>,
     ) -> Result<Vec<PublicApiTeam>> {
         let org_id = self.get_org_id().await?;
         tracing::info!("Org Id {}", org_id);

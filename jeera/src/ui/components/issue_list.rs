@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crossterm::event::{KeyEvent, KeyCode};
+use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::widgets::{List, ListState, StatefulWidget};
 use std::sync::Mutex;
 
@@ -15,7 +15,7 @@ pub struct IssueList {
     list_state: Arc<Mutex<ListState>>,
 }
 
-impl Component<()> for IssueList {
+impl Component for IssueList {
     fn from_state(
         _: &crate::state::State,
         _: tokio::sync::mpsc::UnboundedSender<crate::state::action::Action>,
@@ -23,10 +23,12 @@ impl Component<()> for IssueList {
     where
         Self: Sized,
     {
-        IssueList {list_state:Arc::new(Mutex::new(ListState::default()))}
+        IssueList {
+            list_state: Arc::new(Mutex::new(ListState::default())),
+        }
     }
 
-    fn handle_key_event(&mut self, key: KeyEvent) -> anyhow::Result<Option<UIAction>>  {
+    fn handle_key_event(&mut self, key: KeyEvent) -> anyhow::Result<Option<UIAction>> {
         match key.code {
             KeyCode::Up => {
                 self.list_state.lock().unwrap().select_previous();
@@ -36,8 +38,8 @@ impl Component<()> for IssueList {
             }
             KeyCode::Enter => {
                 if let Some(index) = self.list_state.lock().unwrap().selected() {
-                    return Ok(Some(UIAction::ListItemClick(index)))
-                }                 
+                    return Ok(Some(UIAction::ListItemClick(index)));
+                }
             }
             _ => {}
         }
@@ -57,7 +59,9 @@ impl ComponentRender<RenderProps<'_>> for IssueList {
         props: RenderProps,
     ) {
         let available_width = (area.width as usize).saturating_sub(1);
-        let titles: Vec<String> = props.issue_list.iter()
+        let titles: Vec<String> = props
+            .issue_list
+            .iter()
             .map(|x| {
                 let full_title = x.to_string();
                 if full_title.len() > available_width {
@@ -67,11 +71,10 @@ impl ComponentRender<RenderProps<'_>> for IssueList {
                 }
             })
             .collect();
-        
+
         let mut list_state = self.list_state.lock().unwrap();
 
-        let list = List::new(titles)
-            .highlight_symbol("> ");
+        let list = List::new(titles).highlight_symbol("> ");
 
         StatefulWidget::render(list, area, buf, &mut list_state);
     }

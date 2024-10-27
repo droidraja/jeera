@@ -31,7 +31,7 @@ pub struct CurrentSprintPage {
     selected_issue: Option<String>,
 }
 
-impl Component<()> for CurrentSprintPage {
+impl Component for CurrentSprintPage {
     fn move_with_state(self, state: &crate::state::State) -> Self
     where
         Self: Sized,

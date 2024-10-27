@@ -30,7 +30,7 @@ Jeera CLI requires a configuration file to run. Here's how to set it up:
 
 - View current sprint tasks
 - Display task details
-- Responsive terminal UI
+- Transition task status 
 
 ## Architecture
 
@@ -45,27 +45,29 @@ This application follows a hybrid architecture, combining elements of component-
 - **State**: The central source of truth for the application, managed by the State Store.
 - **Actions**: Events that trigger state changes or API calls.
 - **Components**: UI elements that render based on the current state and dispatch actions.
-- **Middleware**: Intercepts actions to perform side effects (e.g., API calls) before updating the state.
+- **Middleware**: Intercepts actions to perform side effects, in our case API calls, before updating the state.
 
 ### Main Loops
 
 #### UI Loop (`src/ui/ui_loop.rs`)
 
 - Handles user input and rendering
-- Subscribes to state updates
+- Subscribes to state updates, user events (Keyboard and mouse - not used yet)
 - Dispatches actions based on user interactions
 
 #### State Store Loop (`src/state/state_store.rs`)
 
 - Manages the application state
 - Processes actions to update the state
-- Broadcasts state changes to subscribers (e.g., UI)
+- Dispatches state changes to the UI
 
 #### API Server Loop (`src/state/server.rs`)
 
+- Acts as a Middleware and intercepts actions dispatched by UI 
+- Proxies unhandled Actions to the state store
 - Handles API-related actions
 - Performs asynchronous API calls
-- Dispatches new actions based on API responses
+- Dispatches new actions based on API responses to the state store
 
 ### Data Flow
 
@@ -79,5 +81,5 @@ This application follows a hybrid architecture, combining elements of component-
 
 - [x] Implement release and build process
 - [ ] Implement create/edit functionalities for Jira tasks
-- [ ]Improve error handling and user feedback
-- [ ] Add user authentication and configuration
+- [ ] Improve error handling and user feedback
+- [ ] Add user authentication and configuration through TUI

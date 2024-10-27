@@ -48,14 +48,14 @@ impl StateStore {
                         break Interrupted::UserInt;
                     },
                     Action::GetCurrentTasksStarted => {
-                        state.add_bg_task(String::from("sprint tasks"));
+                        state.add_bg_task(String::from("Get sprint tasks"));
                     },
                     Action::GetCurrentTasksFailed => {
-                        state.fail_bg_task(String::from("sprint tasks"));
+                        state.fail_bg_task(String::from("Get sprint tasks"));
                     },
                     Action::GetCurrentTasksFinished(issues) => {
                         state.set_current_sprint_tasks(issues);
-                        state.succeed_bg_task(String::from("sprint tasks"));
+                        state.succeed_bg_task(String::from("Get sprint tasks"));
                     },
                     Action::TransitionIssueStarted => {
                         state.add_bg_task(String::from("transition issue"));

@@ -1,5 +1,12 @@
 [workspace]
 git_release_draft=true
+changelog_update = false
+
+
+[[package]]
+name = "jeera"
+changelog_update = true
+changelog_path = "./CHANGELOG.md"
 
 [changelog]
 body = """
