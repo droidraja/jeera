@@ -69,14 +69,14 @@ impl Component for CurrentSprintPage {
     where
         Self: Sized,
     {
-        let this = Self {
+        let this: CurrentSprintPage = Self {
             issue_list_comp: IssueList::from_state(state, action_tx.clone()),
             issue_detail_comp: None,
             props: state.into(),
             action_tx,
             selected_issue: None,
         };
-        let _ = this.action_tx.send(Action::GetCurrentTasks);
+        // let _ = this.action_tx.send(Action::GetCurrentTasks);
         this
     }
 

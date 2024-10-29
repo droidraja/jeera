@@ -66,10 +66,14 @@ impl StateStore {
                     Action::TransitionIssueFinished => {
                         state.succeed_bg_task(String::from("transition issue"));
                     },
+                    Action::LoginStatus(login_state) => {
+                        state.set_login_state(login_state);
+                    },
                     //capture other actions to silence errors during dev
                     unhandled_action => {
                         tracing::info!("Unhandled Action {:?}", unhandled_action);
                     }
+
                 },
 
                 // Tick to terminate the select every N milliseconds

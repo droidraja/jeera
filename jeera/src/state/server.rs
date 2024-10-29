@@ -4,7 +4,11 @@ use tokio::sync::{
 };
 
 use super::action::Action;
-use crate::{api::JiraApi, termination::Interrupted};
+use crate::{
+    api::JiraApi,
+    state::{app_initializer, LoginState},
+    termination::Interrupted,
+};
 
 pub struct MiddleWare {
     downstream_tx: UnboundedSender<Action>,
@@ -14,7 +18,7 @@ pub struct MiddleWare {
 impl MiddleWare {
     pub fn new() -> (Self, UnboundedReceiver<Action>) {
         let rxtx = mpsc::unbounded_channel::<Action>();
-        let jira_api = JiraApi::new().unwrap();
+        let jira_api = JiraApi::new();
         (
             Self {
                 jira_api,
@@ -24,6 +28,10 @@ impl MiddleWare {
         )
     }
 
+    pub fn reload_api_config(&mut self) {
+        self.jira_api.reload_config();
+    }
+
     pub fn handle(&self, action: Action) -> anyhow::Result<()> {
         tracing::info!("Sending event to state store {:?}", action);
         self.downstream_tx.send(action)?;
@@ -31,7 +39,7 @@ impl MiddleWare {
     }
 
     pub async fn main_loop(
-        self,
+        mut self,
         mut upstream_rx: UnboundedReceiver<Action>,
         mut interrupt_rx: broadcast::Receiver<Interrupted>,
     ) -> anyhow::Result<()> {
@@ -65,6 +73,26 @@ impl MiddleWare {
                                 }
                             }
                         });
+                    },
+                    Action::Initialize => {
+                        tracing::info!("initializing state store");
+                        let status = app_initializer::try_login(self.downstream_tx.clone()).await;
+                        if status == LoginState::LoggedIn {
+                            tokio::spawn(self.jira_api.clone().get_current_tasks(self.downstream_tx.clone()));
+                        }
+                    },
+                    Action::TryLogin { username, password, host } => {
+                        let login_state = app_initializer::try_login_with_credentials(
+                            self.downstream_tx.clone(),
+                            username,
+                            password,
+                            host,
+                        ).await;
+
+                        if login_state == LoginState::LoggedIn {
+                            self.reload_api_config();
+                            tokio::spawn(self.jira_api.clone().get_current_tasks(self.downstream_tx.clone()));
+                        }
                     },
                     _ => {
                         let _ = self.handle(action);

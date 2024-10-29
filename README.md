@@ -2,8 +2,15 @@
 
 A terminal-based user interface (TUI) for interacting with Jira, built in Rust for fun and learning.
 
+## Features
 
-## Configuration
+- View current sprint tasks
+- Display task details
+- Transition task status 
+
+
+
+## Manual Configuration (Can be setup using the tui when starting up)
 
 Jeera CLI requires a configuration file to run. Here's how to set it up:
 
@@ -26,11 +33,6 @@ Jeera CLI requires a configuration file to run. Here's how to set it up:
    }
    ```
 
-## Features
-
-- View current sprint tasks
-- Display task details
-- Transition task status 
 
 ## Architecture
 
@@ -82,4 +84,4 @@ This application follows a hybrid architecture, combining elements of component-
 - [x] Implement release and build process
 - [ ] Implement create/edit functionalities for Jira tasks
 - [ ] Improve error handling and user feedback
-- [ ] Add user authentication and configuration through TUI
+- [x] Add user authentication and configuration through TUI

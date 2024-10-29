@@ -1,95 +1,78 @@
 pub mod models;
 
-use directories::BaseDirs;
+use jira_cloud::models::User;
 use jira_teams::models::PublicApiTeam;
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION};
-use serde::{Deserialize, Serialize};
-use std::fs;
 use tokio::sync::mpsc::UnboundedSender;
 
 use crate::state::action::Action;
+use crate::state::config::Config;
 use anyhow::Result;
-use jira_cloud::apis::configuration::Configuration as JiraAPIConfig;
 use jira_cloud::apis::issue_search_api;
 use jira_cloud::apis::issues_api::do_transition;
+use jira_cloud::apis::{configuration::Configuration as JiraAPIConfig, myself_api};
 use jira_teams::apis::configuration::Configuration as TeamsAPIConfig;
 use jira_teams::apis::teams_public_api_api::query_teams;
 use models::JiraTask;
 use reqwest::{self, Client};
 use serde_json::{json, Value};
 
-const API_TOKEN: &str = "";
-const HOST: &str = "soupcop.atlassian.net";
-const EMAIL: &str = "srajasudhan@gmail.com";
-
-#[derive(Serialize, Deserialize, Clone)]
-struct JiraConfig {
-    email: String,
-    api_token: String,
-    host: String,
-}
-
 #[derive(Clone)]
 #[allow(dead_code)]
 pub struct JiraApi {
-    config: JiraConfig,
+    config: Config,
     teams_config: TeamsAPIConfig,
     jira_config: JiraAPIConfig,
     client: reqwest::Client,
 }
 
-impl From<&JiraConfig> for JiraAPIConfig {
-    fn from(value: &JiraConfig) -> Self {
+impl From<&Config> for JiraAPIConfig {
+    fn from(value: &Config) -> Self {
         let mut config = JiraAPIConfig::new();
-        config.base_path = format!("https://{}", value.host);
+        config.base_path = value.host.clone();
         config.basic_auth = Some((value.email.clone(), Some(value.api_token.clone())));
         config
     }
 }
 
-impl From<&JiraConfig> for TeamsAPIConfig {
-    fn from(value: &JiraConfig) -> Self {
+impl From<&Config> for TeamsAPIConfig {
+    fn from(value: &Config) -> Self {
         let mut config = TeamsAPIConfig::new();
-        config.base_path = format!("https://{}", value.host);
+        config.base_path = value.host.clone();
         config.basic_auth = Some((value.email.clone(), Some(value.api_token.clone())));
         config
     }
 }
 
-#[allow(dead_code)]
-impl JiraApi {
-    pub fn new() -> Result<Self> {
-        let config = Self::load_config()?;
+impl From<&Config> for JiraApi {
+    fn from(config: &Config) -> Self {
         let client = Client::new();
-        let teams_config = TeamsAPIConfig::from(&config);
-        let jira_config = JiraAPIConfig::from(&config);
+        let teams_config = TeamsAPIConfig::from(config);
+        let jira_config = JiraAPIConfig::from(config);
 
-        Ok(Self {
-            config,
+        Self {
+            config: config.clone(),
             teams_config,
             jira_config,
             client,
-        })
+        }
+    }
+}
+
+impl JiraApi {
+    pub fn new() -> Self {
+        let config = Config::load_config();
+        if let Ok(config) = config {
+            Self::from(&config)
+        } else {
+            Self::from(&Config::default())
+        }
     }
 
-    fn load_config() -> Result<JiraConfig> {
-        if let Some(base_dirs) = BaseDirs::new() {
-            let config_dir = base_dirs.home_dir();
-            let config_path = config_dir.join(".jeera").join("config.json");
-
-            if config_path.exists() {
-                let config_str = fs::read_to_string(config_path)?;
-                let config: JiraConfig = serde_json::from_str(&config_str)?;
-                return Ok(config);
-            }
-        }
-
-        // Fallback to default values if config file is not found
-        Ok(JiraConfig {
-            email: EMAIL.into(),
-            api_token: API_TOKEN.into(),
-            host: HOST.into(),
-        })
+    pub fn reload_config(&mut self) {
+        self.config = Config::load_config().unwrap();
+        self.jira_config = JiraAPIConfig::from(&self.config);
+        self.teams_config = TeamsAPIConfig::from(&self.config);
     }
 
     pub fn get_headers(&self) -> Result<HeaderMap> {
@@ -102,8 +85,10 @@ impl JiraApi {
         Ok(headers)
     }
 
-    pub fn get_url(&self, query: &str) -> String {
-        format!("https://{}/rest/api/2/{}", self.config.host, query)
+    pub async fn get_current_user(&self) -> Result<User> {
+        myself_api::get_current_user(&self.jira_config, None)
+            .await
+            .map_err(|e| anyhow::anyhow!("Failed to get current user: {:#}", e))
     }
 
     pub async fn get_org_id(&self) -> Result<String> {
@@ -147,7 +132,7 @@ impl JiraApi {
     pub async fn get_current_tasks(self, action_tx: UnboundedSender<Action>) {
         let _ = action_tx.send(Action::GetCurrentTasksStarted);
 
-        let jql = "assignee=currentUser() AND resolution=Unresolved ORDER BY priority DESC";
+        let jql = "assignee=currentUser() AND Sprint in openSprints() AND resolution=Unresolved ORDER BY priority DESC";
         let expand = "editmetadata,transitions";
 
         match issue_search_api::search_for_issues_using_jql(

@@ -1,7 +1,9 @@
 use std::collections::HashMap;
 
 use super::{
-    components::{background_tasks::BackgroundTasks, Component, ComponentRender},
+    components::{
+        background_tasks::BackgroundTasks, create_issue::CreateIssue, Component, ComponentRender,
+    },
     pages::current_sprint::CurrentSprintPage,
     ui_action::UIAction,
 };
@@ -11,7 +13,7 @@ const TABS: [&str; 2] = ["Current Sprint", "Assigned Tasks"];
 use crate::state::{action::Action, State};
 use anyhow::{Ok, Result};
 use block::Title;
-use crossterm::event::{KeyCode, KeyEvent};
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ratatui::{
     buffer::Buffer,
     layout::{Alignment, Rect},
@@ -22,14 +24,24 @@ use ratatui::{
 };
 use ratatui::{prelude::*, widgets::*};
 use tokio::sync::mpsc::UnboundedSender;
+
+#[derive(Debug, PartialEq, Clone)]
+enum CurrentTab {
+    CurrentSprint,
+    AssignedTasks,
+    CreateIssue,
+}
+
 #[derive(Debug)]
 pub struct TabPage {
     tabs: Vec<String>,
     _pages: HashMap<String, String>,
-    current_tab: usize,
+    current_tab: CurrentTab,
     background_tasks_diplay: BackgroundTasks,
     action_tx: UnboundedSender<Action>,
     pub current_sprint: CurrentSprintPage,
+    create_issue: Option<CreateIssue>,
+    state: State,
 }
 
 impl TabPage {
@@ -40,21 +52,20 @@ impl TabPage {
 
 impl TabPage {
     fn next_tab(self: &mut Self) {
-        self.current_tab += 1;
-        self.current_tab %= self.tabs.len();
-
-        if self.current_tab == 0 {
-            self.action_tx.send(Action::GetCurrentTasks).unwrap();
-        }
+        self.current_tab = match self.current_tab {
+            CurrentTab::CurrentSprint => CurrentTab::AssignedTasks,
+            CurrentTab::AssignedTasks => CurrentTab::CurrentSprint,
+            CurrentTab::CreateIssue => CurrentTab::CurrentSprint,
+        };
     }
     fn prev_tab(self: &mut Self) {
-        if self.current_tab == 0 {
-            self.current_tab = self.tabs.len() - 1;
-        } else {
-            self.current_tab = self.current_tab.saturating_sub(1);
-        }
+        self.current_tab = match self.current_tab {
+            CurrentTab::CurrentSprint => CurrentTab::AssignedTasks,
+            CurrentTab::AssignedTasks => CurrentTab::CurrentSprint,
+            CurrentTab::CreateIssue => CurrentTab::CurrentSprint,
+        };
 
-        if self.current_tab == 0 {
+        if self.current_tab == CurrentTab::CurrentSprint {
             self.action_tx.send(Action::GetCurrentTasks).unwrap();
         }
     }
@@ -70,10 +81,12 @@ impl Component for TabPage {
         Self {
             tabs: Self::get_default_tabs(),
             _pages: HashMap::new(),
-            current_tab: 0,
+            current_tab: CurrentTab::CurrentSprint,
             background_tasks_diplay: BackgroundTasks::from_state(state, action_tx.clone()),
             action_tx,
             current_sprint,
+            create_issue: None,
+            state: state.clone(),
         }
     }
 
@@ -93,15 +106,39 @@ impl Component for TabPage {
             KeyCode::Char('q') => {
                 let _ = self.action_tx.send(Action::Exit);
             }
-            KeyCode::Right => {
+            KeyCode::Char('c') => {
+                if self.create_issue.is_none() {
+                    self.create_issue =
+                        Some(CreateIssue::from_state(&self.state, self.action_tx.clone()));
+                    self.current_tab = CurrentTab::CreateIssue;
+                } else {
+                    self.current_tab = CurrentTab::CurrentSprint;
+                    self.create_issue = None;
+                }
+            }
+            KeyCode::Right if key.modifiers.contains(KeyModifiers::CONTROL) => {
                 self.next_tab();
             }
-            KeyCode::Left => {
+            KeyCode::Left if key.modifiers.contains(KeyModifiers::CONTROL) => {
                 self.prev_tab();
             }
             _ => {
                 // todo!("pass other keycodes to the child pages to handle ")
-                self.current_sprint.handle_key_event(key)?;
+                match self.current_tab {
+                    CurrentTab::CurrentSprint => self.current_sprint.handle_key_event(key)?,
+                    CurrentTab::AssignedTasks => todo!(),
+                    CurrentTab::CreateIssue => {
+                        if let Some(action) =
+                            self.create_issue.as_mut().unwrap().handle_key_event(key)?
+                        {
+                            if action == UIAction::CloseCreateIssue {
+                                self.create_issue = None;
+                                self.current_tab = CurrentTab::CurrentSprint;
+                            }
+                        }
+                        None
+                    }
+                };
             }
         };
         Ok(None)
@@ -153,12 +190,23 @@ impl ComponentRender<()> for TabPage {
                     .borders(Borders::BOTTOM)
                     .border_set(border::THICK),
             )
-            .select(self.current_tab)
+            .select(self.current_tab.clone() as usize)
             .divider(symbols::DOT)
             .padding("[", "]")
             .render(layout[0], buf);
 
-        let _ = self.current_sprint.render(layout[1], buf, ());
+        match self.current_tab {
+            CurrentTab::CurrentSprint => {
+                let _ = self.current_sprint.render(layout[1], buf, ());
+            }
+            CurrentTab::AssignedTasks => todo!(),
+            CurrentTab::CreateIssue => {
+                self.create_issue
+                    .as_ref()
+                    .unwrap()
+                    .render(layout[1], buf, ())
+            }
+        }
         let _ = self.background_tasks_diplay.render(layout[2], buf, ());
     }
 }

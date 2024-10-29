@@ -3,6 +3,8 @@ use std::collections::HashMap;
 use crate::api::models::JiraTask;
 
 pub mod action;
+mod app_initializer;
+pub mod config;
 mod server;
 pub mod state_store;
 
@@ -25,13 +27,32 @@ pub struct BgTask {
     pub status: BgStatus,
 }
 
-#[derive(Default, Clone)]
+#[derive(Clone, Debug, PartialEq)]
+pub enum LoginState {
+    NotLoggedIn,
+    LoggingIn,
+    LoggedIn,
+    LoginFailed,
+}
+
+impl Default for LoginState {
+    fn default() -> Self {
+        LoginState::NotLoggedIn
+    }
+}
+
+#[derive(Default, Debug, Clone)]
 pub struct State {
     pub current_sprint_tasks: Vec<JiraTask>,
     pub bg_tasks: HashMap<String, BgTask>,
+    pub login_state: LoginState,
 }
 
 impl State {
+    pub fn set_login_state(&mut self, login_state: LoginState) {
+        self.login_state = login_state;
+    }
+
     fn set_current_sprint_tasks(self: &mut Self, current_sprint_tasks: Vec<JiraTask>) {
         self.current_sprint_tasks = current_sprint_tasks;
     }

@@ -23,10 +23,10 @@ async fn main() -> anyhow::Result<()> {
     let (state_store, state_rx) = StateStore::new();
     let (ui_manager, action_rx) = UILoop::new();
 
-    tokio::try_join!(
-        state_store.main_loop(terminator, action_rx, interrupt_rx.resubscribe()),
-        ui_manager.main_loop(state_rx, interrupt_rx.resubscribe()),
-    )?;
+    let state_store = state_store.main_loop(terminator, action_rx, interrupt_rx.resubscribe());
+    let ui_manager = ui_manager.main_loop(state_rx, interrupt_rx.resubscribe());
+    
+    tokio::try_join!(ui_manager, state_store)?;
 
     if let Ok(reason) = interrupt_rx.recv().await {
         match reason {

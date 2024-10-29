@@ -23,7 +23,7 @@ use crate::{
     Interrupted,
 };
 
-use super::tab_page::TabPage;
+use super::router_component::RouterComponent;
 
 const RENDERING_TICK_RATE: Duration = Duration::from_millis(1000);
 
@@ -43,11 +43,11 @@ impl UILoop {
         mut state_rx: UnboundedReceiver<State>,
         mut interrupt_rx: broadcast::Receiver<Interrupted>,
     ) -> anyhow::Result<Interrupted> {
+        self.action_tx.send(Action::Initialize).unwrap();
         // consume the first state to initialize the ui app
-        let mut tab_page = {
+        let mut app_router = {
             let state = state_rx.recv().await.unwrap();
-
-            TabPage::from_state(&state, self.action_tx.clone())
+            RouterComponent::from_state(&state, self.action_tx.clone())
         };
 
         let mut terminal = setup_terminal()?;
@@ -61,14 +61,14 @@ impl UILoop {
                 // Catch and handle crossterm events
                maybe_event = crossterm_events.next() => match maybe_event {
                     Some(Ok(Event::Key(key))) if key.kind == KeyEventKind::Press  => {
-                        tab_page.handle_key_event(key)?;
-                    }, 
+                        app_router.handle_key_event(key)?;
+                    },
                     None => break Ok(Interrupted::UserInt),
                     _ => (),
                 },
                 // Handle state updates
                 Some(state) = state_rx.recv() => {
-                    tab_page = tab_page.move_with_state(&state);
+                    app_router = app_router.move_with_state(&state);
                 },
                 // Catch and handle interrupt signal to gracefully shutdown
                 Ok(interrupted) = interrupt_rx.recv() => {
@@ -77,7 +77,7 @@ impl UILoop {
             }
 
             if let Err(err) = terminal
-                .draw(|frame| tab_page.render(frame.area(),frame.buffer_mut(),()))
+                .draw(|frame| app_router.render(frame.area(), frame.buffer_mut(), ()))
                 .context("could not render to the terminal")
             {
                 break Err(err);
