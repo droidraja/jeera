@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.3](https://github.com/droidraja/jeera/compare/v0.1.2...v0.1.3)
+
+### ⛰️ Features
+
+- Add credential configuration through TUI - ([41d54be](https://github.com/droidraja/jeera/commit/41d54bec73807b75cd61b7634b4b5b6450705ab5))
+- Add nerd stats bar to display the current list of api calls being made - ([347e97a](https://github.com/droidraja/jeera/commit/347e97ada3a14acb773715364c99cb07d5540a53))
+- Add openapi spec generation, issue transition using t keycode and couple of bug fixes - ([fb515b1](https://github.com/droidraja/jeera/commit/fb515b11f8c7c2f780fa6f90fc61938330faae90))
+
+### 🐛 Bug Fixes
+
+- *(ui)* Change keybindings to better ones and add logo during login screen - ([93f1b1](https://github.com/droidraja/jeera/commit/93f1b198caef0504990f1fd8b8510a4c2347f2fe))
+
+
 ## [0.1.2](https://github.com/droidraja/jeera/compare/v0.1.1...v0.1.2)
 
 ### 🐛 Bug Fixes
