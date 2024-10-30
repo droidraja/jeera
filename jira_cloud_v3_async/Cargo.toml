@@ -1,9 +1,9 @@
 [package]
 name = "jira_cloud_v3_async"
-version = "0.1.2"
+version = "0.1.3"
 authors = ["ecosystem@atlassian.com"]
 description = "Jira Cloud platform REST API documentation"
-license = "Apache 2.0"
+license = "Apache-2.0"
 edition = "2021"
 
 [dependencies]

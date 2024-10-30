@@ -1,0 +1,2 @@
+- name: Install Mold
+  uses: rui314/setup-mold@v1
