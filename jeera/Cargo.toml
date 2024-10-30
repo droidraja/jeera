@@ -30,3 +30,4 @@ textwrap = "0.16"
 jira_cloud = {path = '../jira_cloud_v3_async', package = 'jira_cloud_v3_async'}
 jira_teams = {path = '../jira_teams_v1_async', package = 'jira_teams_v1_async'}
 tui-textarea = "0.7.0"
+tui-big-text = "0.7.0"

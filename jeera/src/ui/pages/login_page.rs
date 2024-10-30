@@ -1,7 +1,7 @@
 use anyhow::Result;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ratatui::{
-    layout::{Constraint, Direction, Layout, Rect},
+    layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::Line,
     widgets::{Block, Borders, Paragraph, Widget},
@@ -16,6 +16,7 @@ use crate::{
         ui_action::UIAction,
     },
 };
+use tui_big_text::{BigText, PixelSize};
 
 #[derive(Debug, PartialEq)]
 enum ActiveInput {
@@ -164,7 +165,7 @@ impl Component for LoginPage {
         }
 
         let to_return = match key.code {
-            KeyCode::Char('q') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                 self.action_tx.send(Action::Exit).unwrap();
                 Ok(None)
             }
@@ -211,26 +212,41 @@ impl Component for LoginPage {
         to_return
     }
 }
-
 impl ComponentRender<()> for LoginPage {
     fn render(&self, area: Rect, buf: &mut ratatui::prelude::Buffer, _props: ()) {
+        let width_padding = (area.width as f64 * 0.1) as u16;
+        let height_padding = (area.height as f64 * 0.1) as u16;
+        let padded_area = Rect::new(
+            area.x + width_padding,
+            area.y + height_padding,
+            area.width - 2 * width_padding,
+            area.height - 2 * height_padding,
+        );
         let chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
+                Constraint::Length(5), // ASCII art
                 Constraint::Length(3), // Email
                 Constraint::Length(3), // Host
                 Constraint::Length(3), // API Token
                 Constraint::Length(2), // Status/Error message
                 Constraint::Min(0),    // Remaining space
             ])
-            .split(area);
+            .split(padded_area);
 
-        // Update cursor visibility based on active input
+        // Render ASCII art
+        let big_text = BigText::builder()
+            .centered()
+            .pixel_size(PixelSize::Quadrant)
+            .style(Style::new().fg(Color::Yellow))
+            .lines(vec!["Jeera".into()])
+            .build();
 
+        big_text.render(chunks[0], buf);
         // Render inputs
-        self.email_input.render(chunks[0], buf);
-        self.host_input.render(chunks[1], buf);
-        self.api_token_input.render(chunks[2], buf);
+        self.email_input.render(chunks[1], buf);
+        self.host_input.render(chunks[2], buf);
+        self.api_token_input.render(chunks[3], buf);
 
         // Render status/error message
         let status_message = match self.props.login_state {
@@ -254,6 +270,6 @@ impl ComponentRender<()> for LoginPage {
 
         Paragraph::new(Line::from(status_message))
             .style(status_style)
-            .render(chunks[3], buf);
+            .render(chunks[4], buf);
     }
 }

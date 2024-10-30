@@ -103,7 +103,7 @@ impl Component for TabPage {
 
     fn handle_key_event(&mut self, key: KeyEvent) -> Result<Option<UIAction>> {
         match key.code {
-            KeyCode::Char('q') => {
+            KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                 let _ = self.action_tx.send(Action::Exit);
             }
             KeyCode::Char('c') => {
@@ -165,11 +165,11 @@ impl ComponentRender<()> for TabPage {
         let title = Title::from("Personal Jira DashBoard".bold());
         let instructions = Title::from(Line::from(vec![
             " Previous Tab ".into(),
-            "<Left>".blue().bold(),
+            "<Alt+Left>".blue().bold(),
             " Next Tab ".into(),
-            "<Right>".blue().bold(),
+            "<Alt+Right>".blue().bold(),
             " Quit ".into(),
-            "<Q> ".blue().bold(),
+            "<Ctlr+c> ".blue().bold(),
         ]));
 
         let block = Block::bordered()
