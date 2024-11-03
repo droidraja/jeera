@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.4](https://github.com/droidraja/jeera/compare/v0.1.3...v0.1.4)
+
+### ⛰️ Features
+
+- Add a new tab for all assigned tasks - ([279255c](https://github.com/droidraja/jeera/commit/279255c4db67c227de538848adedd843e641e49e))
+
+
 ## [0.1.3](https://github.com/droidraja/jeera/compare/v0.1.2...v0.1.3)
 
 ### ⛰️ Features

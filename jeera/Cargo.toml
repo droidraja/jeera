@@ -1,6 +1,6 @@
 [package]
 name = "jeera"
-version = "0.1.3"
+version = "0.1.4"
 edition = "2021"
 authors = ["Raja Sudhan <srajasudhan@gmail.com>"]
 license = "Apache-2.0"
