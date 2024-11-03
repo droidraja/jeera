@@ -1,9 +1,9 @@
 use crate::api::models::JiraTask;
-use crate::state::action::Action;
+use crate::state::action::{APICall, APILifeCycle, Action};
 use crate::state::State;
 
-use crate::ui::components::{issue_detail::IssueDetail, issue_list::IssueList, Component};
 use crate::ui::components::{issue_list, ComponentRender, Keyable, StaticComponent};
+use crate::ui::components::{issue_list::IssueList, task_detail::TaskDetail, Component};
 use crate::ui::ui_action::UIAction;
 use anyhow::Ok;
 use ratatui::layout::{Constraint, Direction, Layout};
@@ -14,30 +14,60 @@ struct StateProps {
     issue_list: Vec<JiraTask>,
 }
 
-impl From<&State> for StateProps {
-    fn from(value: &State) -> Self {
+impl StateProps {
+    pub fn new(state: &State, filter: &Filter) -> Self {
         Self {
-            issue_list: value.current_sprint_tasks.clone(),
+            issue_list: match filter {
+                Filter::CurrentSprintTasks => state.current_sprint_tasks.clone(),
+                Filter::AllAssignedTasks => state.all_assigned_tasks.clone(),
+            },
         }
     }
 }
 
 #[derive(Debug)]
-pub struct CurrentSprintPage {
+enum Filter {
+    AllAssignedTasks,
+    CurrentSprintTasks,
+}
+
+impl Default for Filter {
+    fn default() -> Self {
+        Filter::CurrentSprintTasks
+    }
+}
+
+#[derive(Debug)]
+pub struct TasksPage {
     issue_list_comp: IssueList,
-    issue_detail_comp: Option<IssueDetail>,
+    issue_detail_comp: Option<TaskDetail>,
     props: StateProps,
     action_tx: UnboundedSender<Action>,
     selected_issue: Option<String>,
+    filter: Filter,
 }
 
-impl Component for CurrentSprintPage {
+impl TasksPage {
+    pub fn new_current_sprint_page(state: &State, action_tx: UnboundedSender<Action>) -> Self {
+        let mut page = Self::from_state(state, action_tx);
+        page.filter = Filter::CurrentSprintTasks;
+        page
+    }
+
+    pub fn new_all_tasks_page(state: &State, action_tx: UnboundedSender<Action>) -> Self {
+        let mut page = Self::from_state(state, action_tx);
+        page.filter = Filter::AllAssignedTasks;
+        page
+    }
+}
+
+impl Component for TasksPage {
     fn move_with_state(self, state: &crate::state::State) -> Self
     where
         Self: Sized,
     {
-        let props: StateProps = state.into();
-        let mut new_issue_detail: Option<IssueDetail> = None;
+        let props: StateProps = StateProps::new(state, &self.filter);
+        let mut new_issue_detail: Option<TaskDetail> = None;
         let mut new_selected_issue: Option<String> = None;
 
         if let Some(issue_key) = &self.selected_issue {
@@ -69,12 +99,13 @@ impl Component for CurrentSprintPage {
     where
         Self: Sized,
     {
-        let this: CurrentSprintPage = Self {
+        let this: TasksPage = Self {
             issue_list_comp: IssueList::from_state(state, action_tx.clone()),
             issue_detail_comp: None,
-            props: state.into(),
+            props: StateProps::new(state, &Filter::default()),
             action_tx,
             selected_issue: None,
+            filter: Filter::default(),
         };
         // let _ = this.action_tx.send(Action::GetCurrentTasks);
         this
@@ -91,7 +122,11 @@ impl Component for CurrentSprintPage {
         }
 
         if key.code == crossterm::event::KeyCode::Char('r') {
-            let _ = self.action_tx.send(Action::GetCurrentTasks);
+            let action = match self.filter {
+                Filter::CurrentSprintTasks => APICall::GetCurrentTasks(APILifeCycle::Start(())),
+                Filter::AllAssignedTasks => APICall::GetAllTasks(APILifeCycle::Start(())),
+            };
+            let _ = self.action_tx.send(action.into());
         }
 
         if let Some(ref mut issue_detail_comp) = self.issue_detail_comp {
@@ -112,7 +147,7 @@ impl Component for CurrentSprintPage {
 
             self.selected_issue = Some(issue.key.clone());
             self.issue_detail_comp =
-                Some(IssueDetail::new(issue.to_owned(), self.action_tx.clone()));
+                Some(TaskDetail::new(issue.to_owned(), self.action_tx.clone()));
 
             return Ok(None);
         }
@@ -121,7 +156,7 @@ impl Component for CurrentSprintPage {
     }
 }
 
-impl ComponentRender<()> for CurrentSprintPage {
+impl ComponentRender<()> for TasksPage {
     fn render(&self, area: ratatui::prelude::Rect, buf: &mut ratatui::prelude::Buffer, _props: ()) {
         // tracing::info!("Is Selected {}",self.selected_issue.is_some());
 

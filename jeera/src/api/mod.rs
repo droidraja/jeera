@@ -5,7 +5,7 @@ use jira_teams::models::PublicApiTeam;
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION};
 use tokio::sync::mpsc::UnboundedSender;
 
-use crate::state::action::Action;
+use crate::state::action::{APICall, APILifeCycle, Action};
 use crate::state::config::Config;
 use anyhow::Result;
 use jira_cloud::apis::issue_search_api;
@@ -59,6 +59,7 @@ impl From<&Config> for JiraApi {
     }
 }
 
+#[allow(dead_code)]
 impl JiraApi {
     pub fn new() -> Self {
         let config = Config::load_config();
@@ -129,15 +130,11 @@ impl JiraApi {
         Ok(response.entities)
     }
 
-    pub async fn get_current_tasks(self, action_tx: UnboundedSender<Action>) {
-        let _ = action_tx.send(Action::GetCurrentTasksStarted);
-
-        let jql = "assignee=currentUser() AND Sprint in openSprints() AND resolution=Unresolved ORDER BY priority DESC";
+    pub async fn get_tasks(&self, jql: String) -> Result<Vec<JiraTask>> {
         let expand = "editmetadata,transitions";
-
-        match issue_search_api::search_for_issues_using_jql(
+        let search_results = issue_search_api::search_for_issues_using_jql(
             &self.jira_config,
-            Some(jql),
+            Some(&jql),
             None,
             Some(50),
             Some("strict"),
@@ -147,20 +144,43 @@ impl JiraApi {
             None,
             None,
         )
-        .await
-        {
-            Ok(search_results) => {
-                let issues: Vec<JiraTask> = search_results
-                    .issues
-                    .unwrap_or_default()
-                    .into_iter()
-                    .map(JiraTask::from)
-                    .collect();
-                let _ = action_tx.send(Action::GetCurrentTasksFinished(issues));
+        .await?;
+        let issues: Vec<JiraTask> = search_results
+            .issues
+            .unwrap_or_default()
+            .into_iter()
+            .map(JiraTask::from)
+            .collect();
+        Ok(issues)
+    }
+
+    pub async fn get_all_assigned_tasks(self, action_tx: UnboundedSender<Action>) {
+        let _ = action_tx.send(APICall::GetAllTasks(APILifeCycle::Started).into());
+        let jql = "assignee=currentUser() AND resolution=Unresolved ORDER BY priority DESC";
+        match self.get_tasks(jql.to_string()).await {
+            Ok(issues) => {
+                tracing::info!("Found {} issues", issues.len());
+                let _ = action_tx.send(APICall::GetAllTasks(APILifeCycle::Finished(issues)).into());
             }
             Err(e) => {
                 tracing::error!("Jira Api Failed {:#}", e);
-                let _ = action_tx.send(Action::GetCurrentTasksFailed);
+                let _ = action_tx.send(APICall::GetAllTasks(APILifeCycle::Failed).into());
+            }
+        }
+    }
+
+    pub async fn get_current_tasks(self, action_tx: UnboundedSender<Action>) {
+        let _ = action_tx.send(APICall::GetCurrentTasks(APILifeCycle::Started).into());
+        let jql =
+            "assignee=currentUser() and sprint in openSprints() ORDER BY resolution, priority DESC";
+        match self.get_tasks(jql.to_string()).await {
+            Ok(issues) => {
+                let _ =
+                    action_tx.send(APICall::GetCurrentTasks(APILifeCycle::Finished(issues)).into());
+            }
+            Err(e) => {
+                tracing::error!("Jira Api Failed {:#}", e);
+                let _ = action_tx.send(APICall::GetCurrentTasks(APILifeCycle::Failed).into());
             }
         }
     }

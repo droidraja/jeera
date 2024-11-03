@@ -6,7 +6,10 @@ use std::{
 use anyhow::Context;
 
 use crossterm::{
-    event::{DisableMouseCapture, EnableMouseCapture, Event, EventStream, KeyEventKind},
+    event::{
+        DisableMouseCapture, EnableFocusChange, EnableMouseCapture, Event, EventStream,
+        KeyEventKind,
+    },
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
@@ -63,6 +66,12 @@ impl UILoop {
                     Some(Ok(Event::Key(key))) if key.kind == KeyEventKind::Press  => {
                         app_router.handle_key_event(key)?;
                     },
+                    Some(Ok(Event::FocusGained)) => {
+                        tracing::info!("Focus gained");
+                    }
+                    Some(Ok(Event::FocusLost)) => {
+                        tracing::info!("Focus lost");
+                    }
                     None => break Ok(Interrupted::UserInt),
                     _ => (),
                 },
@@ -95,7 +104,12 @@ fn setup_terminal() -> anyhow::Result<Terminal<CrosstermBackend<Stdout>>> {
 
     enable_raw_mode()?;
 
-    execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
+    execute!(
+        stdout,
+        EnterAlternateScreen,
+        EnableMouseCapture,
+        EnableFocusChange
+    )?;
 
     Ok(Terminal::new(CrosstermBackend::new(stdout))?)
 }

@@ -2,13 +2,16 @@ use std::time::Duration;
 
 use super::server::MiddleWare;
 
-use crate::{Interrupted, Terminator};
+use crate::{
+    state::action::{APICall, APILifeCycle},
+    Interrupted, Terminator,
+};
 use tokio::sync::{
     broadcast,
     mpsc::{self, UnboundedReceiver, UnboundedSender},
 };
 
-use super::{action::Action, State};
+use super::{action::Action, action::IsStarted, State};
 
 pub struct StateStore {
     state_tx: UnboundedSender<State>,
@@ -47,27 +50,33 @@ impl StateStore {
 
                         break Interrupted::UserInt;
                     },
-                    Action::GetCurrentTasksStarted => {
-                        state.add_bg_task(String::from("Get sprint tasks"));
-                    },
-                    Action::GetCurrentTasksFailed => {
-                        state.fail_bg_task(String::from("Get sprint tasks"));
-                    },
-                    Action::GetCurrentTasksFinished(issues) => {
-                        state.set_current_sprint_tasks(issues);
-                        state.succeed_bg_task(String::from("Get sprint tasks"));
-                    },
-                    Action::TransitionIssueStarted => {
-                        state.add_bg_task(String::from("transition issue"));
-                    },
-                    Action::TransitionIssueFailed => {
-                        state.fail_bg_task(String::from("transition issue"));
-                    },
-                    Action::TransitionIssueFinished => {
-                        state.succeed_bg_task(String::from("transition issue"));
-                    },
                     Action::LoginStatus(login_state) => {
                         state.set_login_state(login_state);
+                    },
+                    Action::API(call)  => {
+                        if call.is_started() {
+                            state.add_bg_task(call.name());
+                        } else if call.is_finished() {
+                            state.succeed_bg_task(call.name());
+                        } else if call.is_failed() {
+                            state.fail_bg_task(call.name());
+                        }
+                        match call {
+                            APICall::TransitionIssue(life_cycle) => {
+                                tracing::info!("GetAllTasks {:?}", life_cycle);
+                            },
+                            APICall::GetAllTasks(APILifeCycle::Finished(result)) => {
+                                state.set_all_assigned_tasks(result);
+                            },
+                            APICall::GetCurrentTasks(APILifeCycle::Finished(result)) => {
+                                state.set_current_sprint_tasks(result);
+                            },
+                            _ => {
+                                tracing::info!("Unhandled API call in state_store {:?}", call);
+                            }
+                        };
+
+
                     },
                     //capture other actions to silence errors during dev
                     unhandled_action => {

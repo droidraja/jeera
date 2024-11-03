@@ -10,23 +10,23 @@ use crate::api::models::JiraTask;
 use super::component::Keyable;
 use super::dropdown_menu::{DropdownMenu, Props};
 use super::{ComponentRender, StaticComponent};
-use crate::state::action::Action;
+use crate::state::action::{APICall, Action};
 use crate::ui::ui_action::UIAction;
 
 #[derive(Debug)]
-pub struct IssueDetail {
+pub struct TaskDetail {
     dropdown: Option<DropdownMenu>,
     task: JiraTask,
     action_tx: tokio::sync::mpsc::UnboundedSender<Action>,
 }
 
-impl StaticComponent<JiraTask> for IssueDetail {
+impl StaticComponent<JiraTask> for TaskDetail {
     fn new(jira_task: JiraTask, action_tx: UnboundedSender<Action>) -> Self
     where
         Self: Sized,
     {
         let task = jira_task;
-        IssueDetail {
+        TaskDetail {
             dropdown: None,
             task,
             action_tx,
@@ -38,7 +38,7 @@ impl StaticComponent<JiraTask> for IssueDetail {
     }
 }
 
-impl Keyable for IssueDetail {
+impl Keyable for TaskDetail {
     fn handle_key_event(
         &mut self,
         key: crossterm::event::KeyEvent,
@@ -73,7 +73,7 @@ impl Keyable for IssueDetail {
                         let transition_id = selected_transition.id.as_ref().unwrap().to_owned();
                         let issue_key = self.task.key.clone();
                         self.action_tx
-                            .send(Action::TransitionIssue(issue_key, transition_id))
+                            .send(APICall::transition_issue(issue_key, transition_id).into())
                             .unwrap();
                         return Ok(None);
                     }
@@ -84,7 +84,7 @@ impl Keyable for IssueDetail {
     }
 }
 
-impl ComponentRender<()> for IssueDetail {
+impl ComponentRender<()> for TaskDetail {
     fn render(&self, area: ratatui::prelude::Rect, buf: &mut ratatui::prelude::Buffer, _props: ()) {
         let available_width = area.width.saturating_sub(2) as usize;
         let wrapped_title = textwrap::wrap(&self.task.summary, available_width);

@@ -1,73 +1,89 @@
-use std::collections::HashMap;
+use std::fmt::Display;
 
 use super::{
     components::{
         background_tasks::BackgroundTasks, create_issue::CreateIssue, Component, ComponentRender,
     },
-    pages::current_sprint::CurrentSprintPage,
+    pages::current_sprint::TasksPage,
     ui_action::UIAction,
 };
 
-const TABS: [&str; 2] = ["Current Sprint", "Assigned Tasks"];
-
 use crate::state::{action::Action, State};
 use anyhow::{Ok, Result};
-use block::Title;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ratatui::{
-    buffer::Buffer,
-    layout::{Alignment, Rect},
-    style::Stylize,
-    symbols::border,
-    text::Line,
-    widgets::{block::Position, Block},
+    buffer::Buffer, layout::Rect, style::Stylize, symbols::border, text::Line, widgets::Block,
 };
 use ratatui::{prelude::*, widgets::*};
 use tokio::sync::mpsc::UnboundedSender;
 
+#[allow(dead_code)]
 #[derive(Debug, PartialEq, Clone)]
-enum CurrentTab {
+enum Tab {
     CurrentSprint,
-    AssignedTasks,
+    AllAssignedTasks,
     CreateIssue,
+    Settings,
+    EpicView,
+}
+
+impl Display for Tab {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            Tab::CurrentSprint => "Current Sprint",
+            Tab::AllAssignedTasks => "All Assigned Tasks",
+            Tab::CreateIssue => "Create Issue",
+            Tab::Settings => "Settings",
+            Tab::EpicView => "Epic View",
+        };
+
+        write!(f, "{}", s)
+    }
 }
 
 #[derive(Debug)]
 pub struct TabPage {
-    tabs: Vec<String>,
-    _pages: HashMap<String, String>,
-    current_tab: CurrentTab,
+    tabs: Vec<Tab>,
+    current_sprint: TasksPage,
+    all_assigned_tasks: TasksPage,
+    create_issue: Option<CreateIssue>,
+    current_tab_index: usize,
     background_tasks_diplay: BackgroundTasks,
     action_tx: UnboundedSender<Action>,
-    pub current_sprint: CurrentSprintPage,
-    create_issue: Option<CreateIssue>,
     state: State,
 }
 
 impl TabPage {
-    fn get_default_tabs() -> Vec<String> {
-        TABS.iter().map(|x| String::from(*x)).collect()
+    fn get_default_tabs() -> Vec<Tab> {
+        vec![Tab::CurrentSprint, Tab::AllAssignedTasks]
     }
 }
 
 impl TabPage {
     fn next_tab(self: &mut Self) {
-        self.current_tab = match self.current_tab {
-            CurrentTab::CurrentSprint => CurrentTab::AssignedTasks,
-            CurrentTab::AssignedTasks => CurrentTab::CurrentSprint,
-            CurrentTab::CreateIssue => CurrentTab::CurrentSprint,
-        };
+        self.current_tab_index = (self.current_tab_index + 1) % self.tabs.len();
     }
-    fn prev_tab(self: &mut Self) {
-        self.current_tab = match self.current_tab {
-            CurrentTab::CurrentSprint => CurrentTab::AssignedTasks,
-            CurrentTab::AssignedTasks => CurrentTab::CurrentSprint,
-            CurrentTab::CreateIssue => CurrentTab::CurrentSprint,
-        };
 
-        if self.current_tab == CurrentTab::CurrentSprint {
-            self.action_tx.send(Action::GetCurrentTasks).unwrap();
-        }
+    fn prev_tab(self: &mut Self) {
+        self.current_tab_index = (self.current_tab_index - 1) % self.tabs.len();
+    }
+
+    fn get_current_tab(&self) -> Tab {
+        self.tabs[self.current_tab_index].clone()
+    }
+
+    fn push_tab(&mut self, tab: Tab) {
+        self.tabs.push(tab);
+        self.current_tab_index = self.tabs.len() - 1;
+    }
+
+    fn pop_tab(&mut self) {
+        self.tabs.pop();
+        self.current_tab_index = self.tabs.len() - 1;
+    }
+
+    fn get_tab_titles(&self) -> Vec<String> {
+        self.tabs.iter().map(|x| x.to_string()).collect()
     }
 }
 
@@ -76,16 +92,17 @@ impl Component for TabPage {
     where
         Self: Sized,
     {
-        let current_sprint = CurrentSprintPage::from_state(state, action_tx.clone());
-
+        let current_sprint = TasksPage::new_current_sprint_page(state, action_tx.clone());
+        let all_assigned_tasks = TasksPage::new_all_tasks_page(state, action_tx.clone());
+        let background_tasks_diplay = BackgroundTasks::from_state(state, action_tx.clone());
         Self {
             tabs: Self::get_default_tabs(),
-            _pages: HashMap::new(),
-            current_tab: CurrentTab::CurrentSprint,
-            background_tasks_diplay: BackgroundTasks::from_state(state, action_tx.clone()),
-            action_tx,
+            background_tasks_diplay,
+            action_tx: action_tx.clone(),
             current_sprint,
+            all_assigned_tasks,
             create_issue: None,
+            current_tab_index: 0,
             state: state.clone(),
         }
     }
@@ -96,6 +113,7 @@ impl Component for TabPage {
     {
         Self {
             current_sprint: self.current_sprint.move_with_state(state),
+            all_assigned_tasks: self.all_assigned_tasks.move_with_state(state),
             background_tasks_diplay: self.background_tasks_diplay.move_with_state(state),
             ..self
         }
@@ -110,10 +128,10 @@ impl Component for TabPage {
                 if self.create_issue.is_none() {
                     self.create_issue =
                         Some(CreateIssue::from_state(&self.state, self.action_tx.clone()));
-                    self.current_tab = CurrentTab::CreateIssue;
+                    self.push_tab(Tab::CreateIssue);
                 } else {
-                    self.current_tab = CurrentTab::CurrentSprint;
                     self.create_issue = None;
+                    self.pop_tab();
                 }
             }
             KeyCode::Right if key.modifiers.contains(KeyModifiers::CONTROL) => {
@@ -124,18 +142,22 @@ impl Component for TabPage {
             }
             _ => {
                 // todo!("pass other keycodes to the child pages to handle ")
-                match self.current_tab {
-                    CurrentTab::CurrentSprint => self.current_sprint.handle_key_event(key)?,
-                    CurrentTab::AssignedTasks => todo!(),
-                    CurrentTab::CreateIssue => {
+                match self.tabs[self.current_tab_index] {
+                    Tab::CurrentSprint => self.current_sprint.handle_key_event(key)?,
+                    Tab::AllAssignedTasks => self.all_assigned_tasks.handle_key_event(key)?,
+                    Tab::CreateIssue => {
                         if let Some(action) =
                             self.create_issue.as_mut().unwrap().handle_key_event(key)?
                         {
                             if action == UIAction::CloseCreateIssue {
                                 self.create_issue = None;
-                                self.current_tab = CurrentTab::CurrentSprint;
+                                self.pop_tab();
                             }
                         }
+                        None
+                    }
+                    _ => {
+                        tracing::info!("unhandled tab {:?}", self.tabs[self.current_tab_index]);
                         None
                     }
                 };
@@ -162,27 +184,24 @@ impl ComponentRender<()> for TabPage {
             ])
             .split(outer_box[0]);
 
-        let title = Title::from("Personal Jira DashBoard".bold());
-        let instructions = Title::from(Line::from(vec![
+        let title = Line::from("Personal Jira DashBoard").centered().bold();
+        let instructions = Line::from(vec![
             " Previous Tab ".into(),
-            "<Alt+Left>".blue().bold(),
+            "<Ctrl+Left>".blue().bold(),
             " Next Tab ".into(),
-            "<Alt+Right>".blue().bold(),
+            "<Ctrl+Right>".blue().bold(),
             " Quit ".into(),
-            "<Ctlr+c> ".blue().bold(),
-        ]));
+            "<Ctrl+c> ".blue().bold(),
+        ])
+        .centered();
 
         let block = Block::bordered()
-            .title(title.alignment(Alignment::Center))
-            .title(
-                instructions
-                    .alignment(Alignment::Center)
-                    .position(Position::Bottom),
-            )
+            .title_top(title)
+            .title_bottom(instructions)
             .border_set(border::THICK);
         block.render(area, buf);
 
-        let _tabs: () = Tabs::new(self.tabs.clone())
+        let _tabs: () = Tabs::new(self.get_tab_titles())
             .style(Style::default().white())
             .highlight_style(Style::default().yellow())
             .block(
@@ -190,22 +209,24 @@ impl ComponentRender<()> for TabPage {
                     .borders(Borders::BOTTOM)
                     .border_set(border::THICK),
             )
-            .select(self.current_tab.clone() as usize)
+            .select(self.current_tab_index as usize)
             .divider(symbols::DOT)
             .padding("[", "]")
             .render(layout[0], buf);
 
-        match self.current_tab {
-            CurrentTab::CurrentSprint => {
+        match self.get_current_tab() {
+            Tab::CurrentSprint => {
                 let _ = self.current_sprint.render(layout[1], buf, ());
             }
-            CurrentTab::AssignedTasks => todo!(),
-            CurrentTab::CreateIssue => {
-                self.create_issue
-                    .as_ref()
-                    .unwrap()
-                    .render(layout[1], buf, ())
+            Tab::AllAssignedTasks => {
+                let _ = self.all_assigned_tasks.render(layout[1], buf, ());
             }
+            Tab::CreateIssue => self
+                .create_issue
+                .as_ref()
+                .unwrap()
+                .render(layout[1], buf, ()),
+            _ => todo!(),
         }
         let _ = self.background_tasks_diplay.render(layout[2], buf, ());
     }

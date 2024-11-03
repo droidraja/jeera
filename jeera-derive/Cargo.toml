@@ -1,0 +1,17 @@
+[package]
+name = "jeera-derive"
+version = "0.1.4"
+edition = "2021"
+authors = ["Raja Sudhan <srajasudhan@gmail.com>"]
+license = "Apache-2.0"
+description = "Derive macros for the Jeera TUI App"
+homepage = "https://github.com/droidraja/jeera"
+repository = "https://github.com/droidraja/jeera"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = { version = "2.0", features = ["full"] }
+quote = "1.0"
+proc-macro2 = "1.0"

@@ -4,6 +4,7 @@ members = [
     "jeera",
     "jira_cloud_v3_async",
     "jira_teams_v1_async",
+    "jeera-derive"
 ]
 
 # The profile that 'cargo dist' will build with

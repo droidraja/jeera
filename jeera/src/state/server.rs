@@ -6,7 +6,10 @@ use tokio::sync::{
 use super::action::Action;
 use crate::{
     api::JiraApi,
-    state::{app_initializer, LoginState},
+    state::{
+        action::{APICall, APILifeCycle},
+        app_initializer, LoginState,
+    },
     termination::Interrupted,
 };
 
@@ -38,6 +41,51 @@ impl MiddleWare {
         Ok(())
     }
 
+    pub async fn handle_api_call(&self, api_call: APICall) {
+        match api_call {
+            APICall::TransitionIssue(APILifeCycle::Start((issue_key, transition_id))) => {
+                let _ = self.handle(APICall::TransitionIssue(APILifeCycle::Started).into());
+                tokio::spawn({
+                    let jira_api = self.jira_api.clone();
+                    let downstream_tx = self.downstream_tx.clone();
+                    async move {
+                        match jira_api.transition_issue(&issue_key, &transition_id).await {
+                            Ok(_) => {
+                                tracing::info!("transition issue successful");
+                                let _ = downstream_tx.send(
+                                    APICall::TransitionIssue(APILifeCycle::Finished(())).into(),
+                                );
+                                tokio::spawn(jira_api.get_current_tasks(downstream_tx));
+                            }
+                            Err(err) => {
+                                tracing::info!("transition issue failed, {:#?}", err);
+                                let _ = downstream_tx
+                                    .send(APICall::TransitionIssue(APILifeCycle::Failed).into());
+                            }
+                        }
+                    }
+                });
+            }
+            APICall::GetAllTasks(APILifeCycle::Start(())) => {
+                tokio::spawn(
+                    self.jira_api
+                        .clone()
+                        .get_all_assigned_tasks(self.downstream_tx.clone()),
+                );
+            }
+            APICall::GetCurrentTasks(APILifeCycle::Start(())) => {
+                tokio::spawn(
+                    self.jira_api
+                        .clone()
+                        .get_current_tasks(self.downstream_tx.clone()),
+                );
+            }
+            _ => {
+                todo!()
+            }
+        }
+    }
+
     pub async fn main_loop(
         mut self,
         mut upstream_rx: UnboundedReceiver<Action>,
@@ -47,38 +95,20 @@ impl MiddleWare {
             tokio::select! {
                 Some(action) = upstream_rx.recv() =>
                 match action {
-                    Action::GetCurrentTasks => {
-                     tokio::spawn(self.jira_api.clone().get_current_tasks(self.downstream_tx.clone()));
-                    },
                     Action::Exit => {
                         let _ = self.handle(action);
                         return Ok(());
                     },
-                    Action::TransitionIssue(issue_key, transition_id) => {
-                        let _ = self.handle(Action::TransitionIssueStarted);
-                        tokio::spawn({
-                            let jira_api = self.jira_api.clone();
-                            let downstream_tx = self.downstream_tx.clone();
-                            async move {
-                                match jira_api.transition_issue(&issue_key, &transition_id).await {
-                                    Ok(_) => {
-                                        tracing::info!("transition issue successful");
-                                        let _ = downstream_tx.send(Action::TransitionIssueFinished);
-                                        tokio::spawn(jira_api.get_current_tasks(downstream_tx));
-                                    },
-                                    Err(err) => {
-                                        tracing::info!("transition issue failed, {:#?}", err);
-                                        let _ = downstream_tx.send(Action::TransitionIssueFailed);
-                                    }
-                                }
-                            }
-                        });
+                    Action::API(api_call) => {
+                        self.handle_api_call(api_call).await;
+                        return Ok(())
                     },
                     Action::Initialize => {
                         tracing::info!("initializing state store");
                         let status = app_initializer::try_login(self.downstream_tx.clone()).await;
                         if status == LoginState::LoggedIn {
                             tokio::spawn(self.jira_api.clone().get_current_tasks(self.downstream_tx.clone()));
+                            tokio::spawn(self.jira_api.clone().get_all_assigned_tasks(self.downstream_tx.clone()));
                         }
                     },
                     Action::TryLogin { username, password, host } => {
@@ -88,10 +118,12 @@ impl MiddleWare {
                             password,
                             host,
                         ).await;
-
+                        tracing::info!("login state {:?}", login_state);
                         if login_state == LoginState::LoggedIn {
+                            tracing::info!("logged in, reloading api config");
                             self.reload_api_config();
                             tokio::spawn(self.jira_api.clone().get_current_tasks(self.downstream_tx.clone()));
+                            tokio::spawn(self.jira_api.clone().get_all_assigned_tasks(self.downstream_tx.clone()));
                         }
                     },
                     _ => {

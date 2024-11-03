@@ -50,6 +50,7 @@ impl Component for RouterComponent {
     }
 
     fn handle_key_event(&mut self, key: KeyEvent) -> Result<Option<UIAction>> {
+        tracing::info!("RouterComponent handle_key_event {:?}", key);
         match self.props.login_state {
             LoginState::LoggedIn => self.tab_page.handle_key_event(key),
             LoginState::NotLoggedIn | LoginState::LoggingIn | LoginState::LoginFailed => {

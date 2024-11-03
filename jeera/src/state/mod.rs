@@ -44,6 +44,7 @@ impl Default for LoginState {
 #[derive(Default, Debug, Clone)]
 pub struct State {
     pub current_sprint_tasks: Vec<JiraTask>,
+    pub all_assigned_tasks: Vec<JiraTask>,
     pub bg_tasks: HashMap<String, BgTask>,
     pub login_state: LoginState,
 }
@@ -55,6 +56,10 @@ impl State {
 
     fn set_current_sprint_tasks(self: &mut Self, current_sprint_tasks: Vec<JiraTask>) {
         self.current_sprint_tasks = current_sprint_tasks;
+    }
+
+    fn set_all_assigned_tasks(self: &mut Self, all_assigned_tasks: Vec<JiraTask>) {
+        self.all_assigned_tasks = all_assigned_tasks;
     }
 
     fn add_bg_task(&mut self, name: String) {

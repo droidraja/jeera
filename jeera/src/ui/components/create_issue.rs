@@ -22,6 +22,7 @@ use crate::{
     },
 };
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub struct CreateIssue {
     summary_input: TextArea<'static>,
@@ -107,18 +108,19 @@ impl Component for CreateIssue {
                     .contains(crossterm::event::KeyModifiers::CONTROL) =>
             {
                 let summary = self.summary_input.lines()[0].clone();
-                let description = self.description_input.lines().join("\n");
+                // let description = self.description_input.lines().join("\n");
                 let issue_type = self.issue_type_input.lines()[0].clone();
 
                 if !summary.is_empty() && !issue_type.is_empty() {
-                    self.action_tx
-                        .send(Action::CreateIssue {
-                            summary,
-                            description,
-                            issue_type,
-                        })
-                        .unwrap();
-                    Ok(Some(UIAction::CloseCreateIssue))
+                    // self.action_tx
+                    //     .send(Action::CreateIssue {
+                    //         summary,
+                    //         description,
+                    //         issue_type,
+                    //     })
+                    //     .unwrap();
+                    // Ok(Some(UIAction::CloseCreateIssue))
+                    todo!()
                 } else {
                     Ok(None)
                 }
